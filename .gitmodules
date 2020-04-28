@@ -1,0 +1,15 @@
+[submodule "third_party/bgfx"]
+	path = third_party/bgfx
+	url = https://github.com/bkaradzic/bgfx
+[submodule "third_party/bimg"]
+	path = third_party/bimg
+	url = https://github.com/bkaradzic/bimg
+[submodule "third_party/bx"]
+	path = third_party/bx
+	url = https://github.com/bkaradzic/bx
+[submodule "third_party/glfw"]
+	path = third_party/glfw
+	url = https://github.com/glfw/glfw
+[submodule "third_party/imgui"]
+	path = third_party/imgui
+	url = https://github.com/ocornut/imgui
