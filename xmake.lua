@@ -18,6 +18,7 @@ end
 
 target("game")
     set_kind("binary")
+    set_default(true)
     add_files("src/*.cpp")
     add_deps("imgui", "bgfx", "glfw")
     add_includedirs(
@@ -29,6 +30,9 @@ target("game")
     add_links("imgui", "bgfx", "glfw")
     if is_os("windows") then
         add_links("gdi32", "shell32", "user32")
+        if is_mode("release") then
+            add_defines("WINMAIN_AS_ENTRY")
+        end
     elseif is_os("linux") then
         add_links("dl", "GL", "pthread", "X11")
     elseif is_os("macosx") then
@@ -40,6 +44,7 @@ target("game")
             "QuartzCore.framework"
         )
     end
+    set_warnings("all", "error")
     bx_compat()
 
 

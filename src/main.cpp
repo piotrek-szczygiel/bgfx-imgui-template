@@ -26,7 +26,13 @@ static void glfw_keyCallback(GLFWwindow *window, int key, int scancode, int acti
     if (key == GLFW_KEY_F1 && action == GLFW_RELEASE) s_showStats = !s_showStats;
 }
 
-int main(int argc, char **argv) {
+#if WINMAIN_AS_ENTRY
+#define MAIN() int WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
+#else
+#define MAIN() int main(int, char **)
+#endif
+
+MAIN() {
     // Create a GLFW window without an OpenGL context.
     glfwSetErrorCallback(glfw_errorCallback);
     if (!glfwInit()) return 1;
