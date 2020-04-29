@@ -1,10 +1,20 @@
 add_rules("mode.debug", "mode.release")
 
 local IMGUI = "third_party/imgui/"
-local BGFX = "third_party/bgfx/"
-local BIMG = "third_party/bimg/"
-local BX = "third_party/bx/"
-local GLFW = "third_party/glfw/"
+local BGFX  = "third_party/bgfx/"
+local BIMG  = "third_party/bimg/"
+local BX    = "third_party/bx/"
+local GLFW  = "third_party/glfw/"
+local GLM   = "third_party/glm/"
+
+local SHADERC        = BGFX .. "tools/shaderc/"
+local GLSL_OPTIMIZER = BGFX .. "3rdparty/glsl-optimizer/"
+local FCPP           = BGFX .. "3rdparty/fcpp/"
+local GLSLANG        = BGFX .. "3rdparty/glslang/"
+local SPIRV_HEADERS  = BGFX .. "3rdparty/spirv-headers/"
+local SPIRV_CROSS    = BGFX .. "3rdparty/spirv-cross/"
+local SPIRV_HEADERS  = BGFX .. "3rdparty/spirv-headers/"
+local SPIRV_TOOLS    = BGFX .. "3rdparty/spirv-tools/"
 
 
 function bx_compat()
@@ -20,13 +30,14 @@ target("game")
     set_kind("binary")
     set_default(true)
     add_files("src/*.cpp")
-    add_deps("imgui", "bgfx", "glfw")
     add_includedirs(
         IMGUI,
         BGFX .. "include",
-        BX .. "include",
-        GLFW .. "include"
+        BX   .. "include",
+        GLFW .. "include",
+        GLM
     )
+    add_deps("imgui", "bgfx", "glfw")
     add_links("imgui", "bgfx", "glfw")
     if is_os("windows") then
         add_links("gdi32", "shell32", "user32")
@@ -44,13 +55,49 @@ target("game")
             "QuartzCore.framework"
         )
     end
-    set_warnings("all", "error")
+    set_warnings("all")
     bx_compat()
 
 
 target("imgui")
     set_kind("static")
     add_files(IMGUI .. "*.cpp")
+
+
+target("shaderc")
+    set_kind("binary")
+    add_defines("__STDC_FORMAT_MACROS")
+    add_files(
+        SHADERC .. "*.cpp",
+        BX      .. "src/*.cpp",
+        BGFX    .. "src/shader_spirv.cpp",
+        BGFX    .. "src/vertexlayout.cpp"
+    )
+    del_files(
+        BX   .. "src/amalgamated.cpp",
+        BX   .. "src/crtnone.cpp"
+    )
+    add_deps("fcpp", "glsl-optimizer", "glslang", "spirv-cross", "spirv-tools")
+    add_links("fcpp", "glsl-optimizer", "glslang", "spirv-cross", "spirv-tools")
+    add_includedirs(
+        BX   .. "include",
+        BX   .. "3rdparty",
+        BGFX .. "include",
+        BIMG .. "include",
+        FCPP,
+        GLSL_OPTIMIZER .. "src/glsl",
+        GLSLANG,
+        GLSLANG .. "glslang/Include",
+        GLSLANG .. "glslang/Public",
+        SPIRV_TOOLS .. "include",
+        SPIRV_CROSS,
+        SPIRV_CROSS .. "include"
+    )
+    if is_os("windows") then
+        add_links("user32", "gdi32")
+        add_defines("_CRT_SECURE_NO_WARNINGS")
+    end
+    bx_compat()
 
 
 target("bgfx")
@@ -61,16 +108,16 @@ target("bgfx")
         BIMG .. "src/image.cpp",
         BIMG .. "src/image_gnf.cpp",
         BIMG .. "3rdparty/astc-codec/src/decoder/*.cc",
-        BX .. "src/*.cpp"
+        BX   .. "src/*.cpp"
     )
     del_files(
         BGFX .. "src/amalgamated.cpp",
-        BX .. "src/amalgamated.cpp",
-        BX .. "src/crtnone.cpp"
+        BX   .. "src/amalgamated.cpp",
+        BX   .. "src/crtnone.cpp"
     )
     add_includedirs(
-        BX .. "3rdparty",
-        BX .. "include",
+        BX   .. "3rdparty",
+        BX   .. "include",
         BIMG .. "include",
         BGFX .. "include",
         BGFX .. "3rdparty",
@@ -134,3 +181,101 @@ target("glfw")
             GLFW .. "src/osmesa_context.c"
         )
     end
+
+
+target("fcpp")
+    set_kind("static")
+    add_files(FCPP .. "*.c")
+    del_files(FCPP .. "usecpp.c")
+    add_includedirs(FCPP)
+    add_defines(
+        "NINCLUDE=64",
+        "NWORK=65536",
+        "NBUFF=65536",
+        "OLD_PREPROCESSOR=0"
+    )
+
+
+target("glsl-optimizer")
+    set_kind("static")
+    add_files(
+        GLSL_OPTIMIZER .. "src/glsl/glcpp/*.c",
+        GLSL_OPTIMIZER .. "src/util/*.c",
+        GLSL_OPTIMIZER .. "src/mesa/program/*.c",
+        GLSL_OPTIMIZER .. "src/mesa/main/*.c",
+        GLSL_OPTIMIZER .. "src/glsl/*.cpp",
+        GLSL_OPTIMIZER .. "src/glsl/*.c"
+    )
+    del_files(GLSL_OPTIMIZER .. "src/glsl/main.cpp")
+    add_includedirs(
+        GLSL_OPTIMIZER .. "include",
+        GLSL_OPTIMIZER .. "src/mesa",
+        GLSL_OPTIMIZER .. "src/mapi",
+        GLSL_OPTIMIZER .. "src/glsl",
+        GLSL_OPTIMIZER .. "src"
+    )
+    if is_os("windows") then
+        add_defines(
+            "__STDC__",
+            "__STDC_VERSION__=199901L",
+            "strdup=_strdup",
+            "alloca=_alloca",
+            "isascii=__isascii"
+        )
+    end
+
+
+target("glslang")
+    set_kind("static")
+    add_files(
+        GLSLANG .. "glslang/GenericCodeGen/*.cpp",
+        GLSLANG .. "glslang/MachineIndependent/*.cpp",
+        GLSLANG .. "glslang/MachineIndependent/preprocessor/*.cpp",
+        GLSLANG .. "hlsl/*.cpp",
+        GLSLANG .. "SPIRV/*.cpp",
+        GLSLANG .. "OGLCompilersDLL/*.cpp"
+    )
+    add_includedirs(
+        GLSLANG,
+        GLSLANG     .. "glslang/Include",
+        GLSLANG     .. "glslang/Public",
+        SPIRV_TOOLS .. "include",
+        SPIRV_TOOLS .. "source"
+    )
+    add_defines(
+        "ENABLE_OPT=1",
+        "ENABLE_HLSL=1"
+    )
+    if is_os("windows") then
+        add_files(GLSLANG .. "glslang/OSDependent/Windows/ossource.cpp")
+    else
+        add_files(GLSLANG .. "glslang/OSDependent/Unix/ossource.cpp")
+    end
+
+
+target("spirv-cross")
+    set_kind("static")
+    add_files(SPIRV_CROSS .. "*.cpp")
+    add_includedirs(
+        SPIRV_CROSS,
+        SPIRV_CROSS .. "include"
+    )
+    add_defines("SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS")
+
+
+target("spirv-tools")
+    set_kind("static")
+    add_files(
+        SPIRV_TOOLS .. "source/*.cpp",
+        SPIRV_TOOLS .. "source/opt/*.cpp",
+        SPIRV_TOOLS .. "source/reduce/*.cpp",
+        SPIRV_TOOLS .. "source/util/*.cpp",
+        SPIRV_TOOLS .. "source/val/*.cpp"
+    )
+    add_includedirs(
+        SPIRV_TOOLS,
+        SPIRV_TOOLS   .. "include",
+        SPIRV_TOOLS   .. "include/generated",
+        SPIRV_TOOLS   .. "source",
+        SPIRV_HEADERS .. "include"
+    )
