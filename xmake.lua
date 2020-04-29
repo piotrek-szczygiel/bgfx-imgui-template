@@ -96,6 +96,8 @@ target("shaderc")
     if is_os("windows") then
         add_links("user32", "gdi32")
         add_defines("_CRT_SECURE_NO_WARNINGS")
+    elseif is_os("linux") then
+        add_links("dl", "pthread")
     end
     bx_compat()
 
