@@ -7,13 +7,14 @@ local BX    = "third_party/bx/"
 local GLFW  = "third_party/glfw/"
 local GLM   = "third_party/glm/"
 
-local SHADER_PLATFORMS = {
-    -- "android",
-    -- "asm.js",
-    -- "ios",
-    "linux",
-    -- "osx",
-    "windows"
+
+local GENERATE_SHADERS = {
+    "glsl",
+    "spirv",
+    "essl",
+    "metal",
+    "dx9",
+    "dx11"
 }
 
 
@@ -27,8 +28,8 @@ target("game")
 
     add_files(
         "src/*.cpp",
-        "assets/shaders/fs_*.sc",
-        "assets/shaders/vs_*.sc"
+        "assets/shaders/*.v",
+        "assets/shaders/*.f"
     )
     add_includedirs(
         IMGUI,
@@ -59,8 +60,8 @@ target("game")
     end
 
     before_build(function (target)
-        for _, platform in ipairs(SHADER_PLATFORMS) do
-            local dir = vformat("$(projectdir)/assets/shaders/%s", platform)
+        for _, type in ipairs(GENERATE_SHADERS) do
+            local dir = vformat("$(projectdir)/assets/shaders/%s", type)
             if not os.exists(dir) then
                 os.mkdir(dir)
             end
@@ -68,8 +69,8 @@ target("game")
     end)
 
     on_clean(function (target)
-        for _, platform in ipairs(SHADER_PLATFORMS) do
-            local dir = vformat("$(projectdir)/assets/shaders/%s", platform)
+        for _, type in ipairs(GENERATE_SHADERS) do
+            local dir = vformat("$(projectdir)/assets/shaders/%s", type)
             if os.exists(dir) then
                 os.rmdir(dir)
             end
@@ -170,30 +171,43 @@ target("glfw")
 
 
 rule("shader")
-    set_extensions(".sc")
+    set_extensions(".v", ".f")
     on_build_file(function (target, sourcefile, opt)
         local shaders = vformat("$(projectdir)/assets/shaders")
         local include = vformat("$(projectdir)/third_party/bgfx/src")
 
-        local base = path.basename(sourcefile)
+        local filename = path.filename(sourcefile)
+        local ext = path.extension(sourcefile)
 
-        local type = nil
-        if base:startswith("fs_") then
-            type = "fragment"
-        elseif base:startswith("vs_") then
-            type = "vertex"
+        local is_vertex = true
+        if ext == ".f" then
+            is_vertex = false
         end
 
-        for _, platform in ipairs(SHADER_PLATFORMS) do
-            local output = path.join(shaders, platform, base) .. ".bin"
-            print("%-10s compiling shader %s...", "[" .. platform .. "]", base)
+        for _, type in ipairs(GENERATE_SHADERS) do
+            local output = path.join(shaders, type, filename) .. ".bin"
+            print("%-10s compiling shader %s", "[" .. type .. "]", filename)
 
-            os.execv("shaderc", {
-                "-f", sourcefile,
-                "-o", output,
-                "-i", include,
-                "--type", type,
-                "--platform", platform
-            })
+            local args1 = {"-f", sourcefile, "-o", output, "-i", include}
+            local args2 = {"--type", "fragment"}
+            local args3 = ""
+
+            local dx_type = "p"
+            if is_vertex then
+                args2 = {"--type", "vertex"}
+                dx_type = "v"
+            end
+
+            if     type == "glsl"  then args3 = {"--platform", "linux",   "--profile", "120"}
+            elseif type == "spirv" then args3 = {"--platform", "linux",   "--profile", "spirv"}
+            elseif type == "essl"  then args3 = {"--platform", "android", "--profile", "120"}
+            elseif type == "metal" then args3 = {"--platform", "osx",     "--profile", "metal"}
+            elseif type == "dx9"   then args3 = {"--platform", "windows", "--profile", dx_type .. "s_3_0"}
+            elseif type == "dx11"  then args3 = {"--platform", "windows", "--profile", dx_type .. "s_4_0"}
+            else print("unknown shader type!")
+            end
+
+            local shaderc_args = table.join(args1, args2, args3)
+            os.execv("shaderc", shaderc_args)
         end
     end)
