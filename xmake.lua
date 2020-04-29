@@ -58,8 +58,22 @@ target("game")
         )
     end
 
+    before_build(function (target)
+        for _, platform in ipairs(SHADER_PLATFORMS) do
+            local dir = vformat("$(projectdir)/assets/shaders/%s", platform)
+            if not os.exists(dir) then
+                os.mkdir(dir)
+            end
+        end
+    end)
+
     on_clean(function (target)
-        os.rm("$(projectdir)/assets/shaders/**.bin")
+        for _, platform in ipairs(SHADER_PLATFORMS) do
+            local dir = vformat("$(projectdir)/assets/shaders/%s", platform)
+            if os.exists(dir) then
+                os.rmdir(dir)
+            end
+        end
     end)
 
     before_run(function (target)
