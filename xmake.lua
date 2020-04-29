@@ -16,6 +16,16 @@ local SPIRV_CROSS    = BGFX .. "3rdparty/spirv-cross/"
 local SPIRV_HEADERS  = BGFX .. "3rdparty/spirv-headers/"
 local SPIRV_TOOLS    = BGFX .. "3rdparty/spirv-tools/"
 
+local SHADER_PLATFORMS = {
+    "android",
+    "asm.js",
+    "ios",
+    "linux",
+    -- "orbis",
+    "osx",
+    "windows"
+}
+
 
 function bx_compat()
     if is_os("windows") then
@@ -37,8 +47,7 @@ target("game")
         GLFW .. "include",
         GLM
     )
-    add_deps("imgui", "bgfx", "glfw")
-    add_links("imgui", "bgfx", "glfw")
+    add_deps("imgui", "bgfx", "glfw", "shaderc")
     if is_os("windows") then
         add_links("gdi32", "shell32", "user32")
         if is_mode("release") then
@@ -59,6 +68,50 @@ target("game")
     bx_compat()
 
 
+
+    -- compile shaders inside assets/shaders directory
+    after_build(function (target)
+        local shaders = vformat("$(projectdir)/assets/shaders")
+        os.tryrm(shaders .. "/**.bin")
+
+        for _, platform in ipairs(SHADER_PLATFORMS) do
+            os.mkdir(path.join(shaders, platform))
+        end
+
+        local include = vformat("$(projectdir)/third_party/bgfx/src")
+        local shaderc = path.join(target:targetdir(), "shaderc")
+
+        for _, platform in ipairs(SHADER_PLATFORMS) do
+            print("Compiling shaders (" .. platform .. ")")
+
+            for _, filepath in ipairs(os.files(shaders .. "/**.sc")) do
+                local base = path.basename(filepath)
+
+                local type = nil
+                if base:startswith("fs_") then
+                    type = "fragment"
+                elseif base:startswith("vs_") then
+                    type = "vertex"
+                end
+
+                if type then
+                    print("  " .. path.filename(filepath))
+                    local output = path.join(shaders, platform, base) .. ".bin"
+
+                    os.execv(shaderc, {
+                        "-f", filepath,
+                        "-o", output,
+                        "-i", include,
+                        "--type", type,
+                        "--platform", platform
+                    })
+                end
+            end
+            print()
+        end
+    end)
+
+
 target("imgui")
     set_kind("static")
     add_files(IMGUI .. "*.cpp")
@@ -66,7 +119,7 @@ target("imgui")
 
 target("shaderc")
     set_kind("binary")
-    add_defines("__STDC_FORMAT_MACROS")
+    add_deps("fcpp", "glsl-optimizer", "glslang", "spirv-cross", "spirv-tools")
     add_files(
         SHADERC .. "*.cpp",
         BX      .. "src/*.cpp",
@@ -77,8 +130,6 @@ target("shaderc")
         BX   .. "src/amalgamated.cpp",
         BX   .. "src/crtnone.cpp"
     )
-    add_deps("fcpp", "glsl-optimizer", "glslang", "spirv-cross", "spirv-tools")
-    add_links("fcpp", "glsl-optimizer", "glslang", "spirv-cross", "spirv-tools")
     add_includedirs(
         BX   .. "include",
         BX   .. "3rdparty",
@@ -93,9 +144,9 @@ target("shaderc")
         SPIRV_CROSS,
         SPIRV_CROSS .. "include"
     )
+    add_defines("__STDC_FORMAT_MACROS")
     if is_os("windows") then
         add_links("user32", "gdi32")
-        add_defines("_CRT_SECURE_NO_WARNINGS")
     elseif is_os("linux") then
         add_links("dl", "pthread")
     end
@@ -104,7 +155,6 @@ target("shaderc")
 
 target("bgfx")
     set_kind("static")
-    add_defines("__STDC_FORMAT_MACROS")
     add_files(
         BGFX .. "src/*.cpp",
         BIMG .. "src/image.cpp",
@@ -128,11 +178,11 @@ target("bgfx")
         BIMG .. "3rdparty/astc-codec",
         BIMG .. "3rdparty/astc-codec/include"
     )
+    add_defines("__STDC_FORMAT_MACROS")
     if is_mode("debug") then
         add_defines("BGFX_CONFIG_DEBUG=1")
     end
     if is_os("windows") then
-        add_defines("_CRT_SECURE_NO_WARNINGS")
         del_files(
             BGFX .. "src/glcontext_glx.cpp",
             BGFX .. "src/glcontext_egl.cpp"
@@ -157,7 +207,7 @@ target("glfw")
     )
     add_includedirs(GLFW .. "include")
     if is_os("windows") then
-        add_defines("_GLFW_WIN32", "_CRT_SECURE_NO_WARNINGS")
+        add_defines("_GLFW_WIN32")
         add_files(
             GLFW .. "src/win32_*.c",
             GLFW .. "src/wgl_context.c"
