@@ -37,4 +37,4 @@ Remember to copy the executable to directory that is present in PATH environment
 If you are on Linux you can just install it to something like `/usr/local/`.
 
 Now after you build your game, shaders will be automatically compiled
-for every platform specified in xmake.lua `SHADER_PLATFORMS` variable.
+for every platform specified in xmake.lua `SHADER_TARGETS` variable.
