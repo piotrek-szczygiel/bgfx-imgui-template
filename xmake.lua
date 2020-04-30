@@ -192,29 +192,39 @@ rule("shader")
         end
 
         for _, type in ipairs(SHADER_TARGETS) do
-            local output = path.join(shaders, type, filename) .. ".bin"
-            print("%-10s compiling shader %s", "[" .. type .. "]", filename)
-
-            local args1 = {"-f", sourcefile, "-o", output, "-i", include}
-            local args2 = {"--type", "fragment"}
-            local args3 = ""
-
-            local dx_type = "p"
-            if is_vertex then
-                args2 = {"--type", "vertex"}
-                dx_type = "v"
+            local supported = true
+            if os.host() ~= "windows" then
+                if type == "dx9" or type == "dx11" then
+                    supported = false
+                    print("%-10s unsupported platform", "[" .. type .. "]")
+                end
             end
 
-            if     type == "glsl"  then args3 = {"--platform", "linux",   "--profile", "120"}
-            elseif type == "spirv" then args3 = {"--platform", "linux",   "--profile", "spirv"}
-            elseif type == "essl"  then args3 = {"--platform", "android", "--profile", "120"}
-            elseif type == "metal" then args3 = {"--platform", "osx",     "--profile", "metal"}
-            elseif type == "dx9"   then args3 = {"--platform", "windows", "--profile", dx_type .. "s_3_0"}
-            elseif type == "dx11"  then args3 = {"--platform", "windows", "--profile", dx_type .. "s_4_0"}
-            else print("unknown shader type!")
-            end
+            if supported then
+                local output = path.join(shaders, type, filename) .. ".bin"
+                print("%-10s compiling shader %s", "[" .. type .. "]", filename)
 
-            local shaderc_args = table.join(args1, args2, args3)
-            os.execv("shaderc", shaderc_args)
+                local args1 = {"-f", sourcefile, "-o", output, "-i", include}
+                local args2 = {"--type", "fragment"}
+                local args3 = ""
+
+                local dx_type = "p"
+                if is_vertex then
+                    args2 = {"--type", "vertex"}
+                    dx_type = "v"
+                end
+
+                if     type == "glsl"  then args3 = {"--platform", "linux",   "--profile", "120"}
+                elseif type == "spirv" then args3 = {"--platform", "linux",   "--profile", "spirv"}
+                elseif type == "essl"  then args3 = {"--platform", "android", "--profile", "120"}
+                elseif type == "metal" then args3 = {"--platform", "osx",     "--profile", "metal"}
+                elseif type == "dx9"   then args3 = {"--platform", "windows", "--profile", dx_type .. "s_3_0"}
+                elseif type == "dx11"  then args3 = {"--platform", "windows", "--profile", dx_type .. "s_4_0"}
+                else print("unknown shader type!")
+                end
+
+                local shaderc_args = table.join(args1, args2, args3)
+                os.execv("shaderc", shaderc_args)
+            end
         end
     end)

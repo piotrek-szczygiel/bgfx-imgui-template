@@ -26,16 +26,16 @@
 #define MAIN() int main(int, char **)
 #endif
 
-void reset();
+static void reset();
 
-void glfw_error_callback(int error, const char *description);
-void glfw_window_size_callback(GLFWwindow *window, int width, int height);
-void glfw_key_callback(GLFWwindow *window, int key, int scancode, int action, int mods);
-void glfw_char_callback(GLFWwindow *window, unsigned int codepoint);
-void glfw_mouse_button_callback(GLFWwindow *window, int button, int action, int mods);
-void glfw_scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
+static void glfw_error_callback(int error, const char *description);
+static void glfw_window_size_callback(GLFWwindow *window, int width, int height);
+static void glfw_key_callback(GLFWwindow *window, int key, int scancode, int action, int mods);
+static void glfw_char_callback(GLFWwindow *window, unsigned int codepoint);
+static void glfw_mouse_button_callback(GLFWwindow *window, int button, int action, int mods);
+static void glfw_scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
 
-bgfx::ProgramHandle create_program(const char *name);
+static bgfx::ProgramHandle create_program(const char *name);
 
 static bool g_show_stats = false;
 static int g_width = 1024;
@@ -207,8 +207,8 @@ static const char *get_shader_type() {
 }
 
 static bgfx::ProgramHandle create_program(const char *name) {
-    char vs_path[MAX_PATH];
-    char fs_path[MAX_PATH];
+    char vs_path[256];
+    char fs_path[256];
 
     snprintf(vs_path, sizeof(vs_path), "assets/shaders/%s/%s.v.bin", get_shader_type(), name);
     snprintf(fs_path, sizeof(fs_path), "assets/shaders/%s/%s.f.bin", get_shader_type(), name);
