@@ -1,15 +1,9 @@
-add_rules("mode.debug", "mode.release")
-
 local IMGUI = "third_party/imgui/"
 local BGFX  = "third_party/bgfx/"
 local BIMG  = "third_party/bimg/"
 local BX    = "third_party/bx/"
 local GLFW  = "third_party/glfw/"
 local GLM   = "third_party/glm/"
-
-
--- switch to false to disable shader compilation on every build
-local GENERATE_SHADERS = true
 
 local SHADER_TARGETS = {
     "glsl",
@@ -28,7 +22,6 @@ target("game")
 
     set_languages("c++17")
     set_warnings("all")
-    add_rules("shaders")
     set_rundir("$(projectdir)")
 
     add_files("src/*.cpp")
@@ -39,13 +32,6 @@ target("game")
         GLFW .. "include",
         GLM
     )
-
-    if GENERATE_SHADERS then
-        add_files(
-            "assets/shaders/*.v",
-            "assets/shaders/*.f"
-        )
-    end
 
     if is_os("windows") then
         add_includedirs(BX .. "include/compat/msvc")
@@ -186,54 +172,75 @@ target("glfw")
     end
 
 
-rule("shaders")
-    set_extensions(".v", ".f")
-    on_build_file(function (target, sourcefile, opt)
-        local shaders = vformat("$(projectdir)/assets/shaders")
-        local include = vformat("$(projectdir)/third_party/bgfx/src")
+task("shaders")
+    set_category("plugin")
 
-        local filename = path.filename(sourcefile)
-        local ext = path.extension(sourcefile)
+    set_menu {
+        usage = "xmake shaders",
+        description = "Compile shaders from shaders/ directory into assets/shaders/",
+        options = {}
+    }
 
-        local is_vertex = true
-        if ext == ".f" then
-            is_vertex = false
+    on_run(function()
+        local shader_compiler = vformat("$(projectdir)/bin/shaderc")
+        if os.host() == "windows" then
+            shader_compiler = shader_compiler .. ".exe"
         end
 
-        for _, type in ipairs(SHADER_TARGETS) do
-            local supported = true
-            if os.host() ~= "windows" then
-                if type == "dx9" or type == "dx11" then
-                    supported = false
-                    print("%-10s unsupported platform", "[" .. type .. "]")
-                end
+        local vs = os.files("$(projectdir)/shaders/*.v")
+        local fs = os.files("$(projectdir)/shaders/*.f")
+        local shaders_output = vformat("$(projectdir)/assets/shaders")
+        local include = vformat("$(projectdir)/third_party/bgfx/src")
+
+        if not os.exists(shader_compiler) then
+            print("Invoke `xmake -F shaderc.lua` before compiling shaders")
+            return
+        end
+
+        for _, sourcefile in ipairs(table.join(vs, fs)) do
+            local filename = path.filename(sourcefile)
+            local ext = path.extension(sourcefile)
+
+            local is_vertex = true
+            if ext == ".f" then
+                is_vertex = false
             end
 
-            if supported then
-                local output = path.join(shaders, type, filename) .. ".bin"
-                print("%-10s compiling shader %s", "[" .. type .. "]", filename)
-
-                local args1 = {"-f", sourcefile, "-o", output, "-i", include}
-                local args2 = {"--type", "fragment"}
-                local args3 = ""
-
-                local dx_type = "p"
-                if is_vertex then
-                    args2 = {"--type", "vertex"}
-                    dx_type = "v"
+            for _, type in ipairs(SHADER_TARGETS) do
+                local supported = true
+                if os.host() ~= "windows" then
+                    if type == "dx9" or type == "dx11" then
+                        supported = false
+                        print("%-10s unsupported platform", "[" .. type .. "]")
+                    end
                 end
 
-                if     type == "glsl"  then args3 = {"--platform", "linux",   "--profile", "120"}
-                elseif type == "spirv" then args3 = {"--platform", "linux",   "--profile", "spirv"}
-                elseif type == "essl"  then args3 = {"--platform", "android", "--profile", "120"}
-                elseif type == "metal" then args3 = {"--platform", "osx",     "--profile", "metal"}
-                elseif type == "dx9"   then args3 = {"--platform", "windows", "--profile", dx_type .. "s_3_0"}
-                elseif type == "dx11"  then args3 = {"--platform", "windows", "--profile", dx_type .. "s_4_0"}
-                else print("unknown shader type!")
-                end
+                if supported then
+                    local output = path.join(shaders_output, type, filename) .. ".bin"
+                    print("%-10s compiling shader %s", "[" .. type .. "]", filename)
 
-                local shaderc_args = table.join(args1, args2, args3)
-                os.execv("shaderc", shaderc_args)
+                    local args1 = {"-f", sourcefile, "-o", output, "-i", include}
+                    local args2 = {"--type", "fragment"}
+                    local args3 = ""
+
+                    local dx_type = "p"
+                    if is_vertex then
+                        args2 = {"--type", "vertex"}
+                        dx_type = "v"
+                    end
+
+                    if     type == "glsl"  then args3 = {"--platform", "linux",   "--profile", "120"}
+                    elseif type == "spirv" then args3 = {"--platform", "linux",   "--profile", "spirv"}
+                    elseif type == "essl"  then args3 = {"--platform", "android", "--profile", "120"}
+                    elseif type == "metal" then args3 = {"--platform", "osx",     "--profile", "metal"}
+                    elseif type == "dx9"   then args3 = {"--platform", "windows", "--profile", dx_type .. "s_3_0"}
+                    elseif type == "dx11"  then args3 = {"--platform", "windows", "--profile", dx_type .. "s_4_0"}
+                    else print("unknown shader type!")
+                    end
+
+                    local shaderc_args = table.join(args1, args2, args3)
+                    os.execv(shader_compiler, shaderc_args)
+                end
             end
         end
     end)

@@ -1,5 +1,3 @@
-add_rules("mode.debug", "mode.release")
-
 local BGFX  = "third_party/bgfx/"
 local BIMG  = "third_party/bimg/"
 local BX    = "third_party/bx/"
@@ -51,6 +49,11 @@ target("shaderc")
         add_includedirs(BX .. "include/compat/osx")
     end
 
+    after_link(function (target)
+        os.mkdir("$(projectdir)/bin")
+        os.cp(target:targetfile(), "$(projectdir)/bin")
+    end)
+
 
 target("fcpp")
     set_kind("static")
@@ -64,7 +67,6 @@ target("fcpp")
 
     add_files(FCPP .. "*.c|usecpp.c")
     add_includedirs(FCPP)
-
 
 
 target("glsl-optimizer")
@@ -157,4 +159,3 @@ target("spirv-tools")
         SPIRV_TOOLS   .. "source",
         SPIRV_HEADERS .. "include"
     )
-

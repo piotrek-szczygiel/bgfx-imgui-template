@@ -1,40 +1,55 @@
-## Downloading dependencies
+# Cloning
+
+```bash
+# Clone with dependencies
+git clone --recurse-submodules -j8 https://github.com/piotrek-szczygiel/bgfx-imgui-template
+```
+
+## Updating dependencies
 
 ```bash
 # Update submodules
 git submodule update --init --recursive
 ```
 
+# Building
+
 ## Requirements
 
 - C++ compiler
 - [xmake](https://xmake.io/)
 
+You can install xmake on your machine using these one-liners:
+
+```bash
+# Unix systems
+bash <(curl -fsSL https://xmake.io/shget.text)
+
+# Windows Powershell
+Invoke-Expression (Invoke-Webrequest 'https://xmake.io/psget.text' -UseBasicParsing).Content
+```
+
 ## Usage
 
 ```bash
-# Build
+# Build game
 xmake
 
-# Then run
+# Compile shaders
+xmake shaders
+
+# Run
 xmake run
 ```
 
 ## Compiling shaders
 
-If you don't have shaderc already in your PATH, you have to compile it first.
-After compilation, executable should be present inside build directory.
+Shaderc is present as an .exe file in bin directory.  
+If you wish to compile shaders on unix platforms you have to compile it first.
 
 ```bash
 # Build shaderc
 xmake -F shaderc.lua
-
-# Make it available from everywhere
-xmake install -o /usr/local -F shaderc.lua
 ```
 
-Remember to copy the executable to directory that is present in PATH environment variable.  
-If you are on Linux you can just install it to something like `/usr/local/`.
-
-Now after you build your game, shaders will be automatically compiled
-for every platform specified in xmake.lua `SHADER_TARGETS` variable.
+It will automatically copy itself to bin directory.
