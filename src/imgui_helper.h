@@ -40,8 +40,8 @@ static void imgui_init(GLFWwindow* window, bgfx::ProgramHandle program) {
     // Create font
     io.Fonts->AddFontDefault();
     io.Fonts->GetTexDataAsRGBA32(&data, &width, &height);
-    g_imgui_font_texture = bgfx::createTexture2D((uint16_t)width, (uint16_t)height, false, 1, bgfx::TextureFormat::BGRA8,
-                                                 0, bgfx::copy(data, width * height * 4));
+    g_imgui_font_texture = bgfx::createTexture2D((uint16_t)width, (uint16_t)height, false, 1, bgfx::TextureFormat::BGRA8, 0,
+                                                 bgfx::copy(data, width * height * 4));
     g_imgui_font_uniform = bgfx::createUniform("s_tex", bgfx::UniformType::Sampler);
 
     // Setup render callback
@@ -84,14 +84,11 @@ static void imgui_init(GLFWwindow* window, bgfx::ProgramHandle program) {
 
     g_imgui_cursors[ImGuiMouseCursor_Arrow] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
     g_imgui_cursors[ImGuiMouseCursor_TextInput] = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
-    g_imgui_cursors[ImGuiMouseCursor_ResizeAll] =
-        glfwCreateStandardCursor(GLFW_ARROW_CURSOR);  // FIXME: GLFW doesn't have this.
+    g_imgui_cursors[ImGuiMouseCursor_ResizeAll] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
     g_imgui_cursors[ImGuiMouseCursor_ResizeNS] = glfwCreateStandardCursor(GLFW_VRESIZE_CURSOR);
     g_imgui_cursors[ImGuiMouseCursor_ResizeEW] = glfwCreateStandardCursor(GLFW_HRESIZE_CURSOR);
-    g_imgui_cursors[ImGuiMouseCursor_ResizeNESW] =
-        glfwCreateStandardCursor(GLFW_ARROW_CURSOR);  // FIXME: GLFW doesn't have this.
-    g_imgui_cursors[ImGuiMouseCursor_ResizeNWSE] =
-        glfwCreateStandardCursor(GLFW_ARROW_CURSOR);  // FIXME: GLFW doesn't have this.
+    g_imgui_cursors[ImGuiMouseCursor_ResizeNESW] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
+    g_imgui_cursors[ImGuiMouseCursor_ResizeNWSE] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
     g_imgui_cursors[ImGuiMouseCursor_Hand] = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
 }
 
@@ -108,8 +105,7 @@ static void imgui_events(float dt) {
     glfwGetWindowSize(g_imgui_window, &window_w, &window_h);
     glfwGetFramebufferSize(g_imgui_window, &frame_w, &frame_h);
     io.DisplaySize = ImVec2((float)window_w, (float)window_h);
-    io.DisplayFramebufferScale =
-        ImVec2(window_w > 0 ? ((float)frame_w / window_w) : 0, window_h > 0 ? ((float)frame_h / window_h) : 0);
+    io.DisplayFramebufferScale = ImVec2(window_w > 0 ? ((float)frame_w / window_w) : 0, window_h > 0 ? ((float)frame_h / window_h) : 0);
 
     // Setup time step
     io.DeltaTime = dt;
@@ -135,16 +131,15 @@ static void imgui_events(float dt) {
     }
 
     // Update mouse cursor
-    if (!(io.ConfigFlags & ImGuiConfigFlags_NoMouseCursorChange) &&
-        glfwGetInputMode(g_imgui_window, GLFW_CURSOR) != GLFW_CURSOR_DISABLED) {
+    if (!(io.ConfigFlags & ImGuiConfigFlags_NoMouseCursorChange) && glfwGetInputMode(g_imgui_window, GLFW_CURSOR) != GLFW_CURSOR_DISABLED) {
         ImGuiMouseCursor imgui_cursor = ImGui::GetMouseCursor();
         if (imgui_cursor == ImGuiMouseCursor_None || io.MouseDrawCursor) {
             // Hide OS mouse cursor if imgui is drawing it or if it wants no cursor
             glfwSetInputMode(g_imgui_window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
         } else {
             // Show OS mouse cursor
-            glfwSetCursor(g_imgui_window, g_imgui_cursors[imgui_cursor] ? g_imgui_cursors[imgui_cursor]
-                                                                        : g_imgui_cursors[ImGuiMouseCursor_Arrow]);
+            glfwSetCursor(g_imgui_window,
+                          g_imgui_cursors[imgui_cursor] ? g_imgui_cursors[imgui_cursor] : g_imgui_cursors[ImGuiMouseCursor_Arrow]);
             glfwSetInputMode(g_imgui_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
         }
     }
@@ -188,7 +183,8 @@ static void imgui_render() {
                 state |= BGFX_STATE_BLEND_FUNC(BGFX_STATE_BLEND_SRC_ALPHA, BGFX_STATE_BLEND_INV_SRC_ALPHA);
                 const uint16_t xx = uint16_t(bx::max(cmd->ClipRect.x, 0.0f));
                 const uint16_t yy = uint16_t(bx::max(cmd->ClipRect.y, 0.0f));
-                bgfx::setScissor(xx, yy, uint16_t(bx::min(cmd->ClipRect.z, 65535.0f) - xx), uint16_t(bx::min(cmd->ClipRect.w, 65535.0f) - yy));
+                bgfx::setScissor(xx, yy, uint16_t(bx::min(cmd->ClipRect.z, 65535.0f) - xx),
+                                 uint16_t(bx::min(cmd->ClipRect.w, 65535.0f) - yy));
                 bgfx::setState(state);
                 bgfx::setTexture(0, g_imgui_font_uniform, th);
                 bgfx::setVertexBuffer(0, &tvb, 0, num_vertices);

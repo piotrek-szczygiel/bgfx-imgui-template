@@ -18,7 +18,7 @@
 
 #include <GLFW/glfw3native.h>
 
-#include "imgui.h"
+#include "imgui_helper.h"
 
 #if WINMAIN_AS_ENTRY
 #define MAIN() int WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
@@ -187,22 +187,15 @@ static const bgfx::Memory *load_file(const char *filename) {
 
 static const char *get_shader_type() {
     switch (bgfx::getRendererType()) {
-        case bgfx::RendererType::Noop:
-        case bgfx::RendererType::Direct3D9:
-            return "dx9";
-        case bgfx::RendererType::Direct3D11:
-        case bgfx::RendererType::Direct3D12:
-            return "dx11";
-        case bgfx::RendererType::OpenGL:
-            return "glsl";
-        case bgfx::RendererType::OpenGLES:
-            return "essl";
-        case bgfx::RendererType::Metal:
-            return "metal";
-        case bgfx::RendererType::Vulkan:
-            return "spirv";
-        default:
-            return "unknown";
+        case bgfx::RendererType::Noop:  // fallthrough
+        case bgfx::RendererType::Direct3D9: return "dx9";
+        case bgfx::RendererType::Direct3D11:  // fallthrough
+        case bgfx::RendererType::Direct3D12: return "dx11";
+        case bgfx::RendererType::OpenGL: return "glsl";
+        case bgfx::RendererType::OpenGLES: return "essl";
+        case bgfx::RendererType::Metal: return "metal";
+        case bgfx::RendererType::Vulkan: return "spirv";
+        default: return "unknown";
     }
 }
 
