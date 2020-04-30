@@ -25,10 +25,11 @@ target("game")
     set_kind("binary")
     set_default(true)
     add_deps("imgui", "bgfx", "glfw")
-    set_languages("c++17")
 
+    set_languages("c++17")
     set_warnings("all")
-    add_rules("shader")
+    add_rules("shaders")
+    set_rundir("$(projectdir)")
 
     add_files("src/*.cpp")
     add_includedirs(
@@ -173,7 +174,7 @@ target("glfw")
     end
 
 
-rule("shader")
+rule("shaders")
     set_extensions(".v", ".f")
     on_build_file(function (target, sourcefile, opt)
         local shaders = vformat("$(projectdir)/assets/shaders")
