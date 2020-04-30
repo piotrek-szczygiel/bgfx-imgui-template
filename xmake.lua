@@ -8,7 +8,10 @@ local GLFW  = "third_party/glfw/"
 local GLM   = "third_party/glm/"
 
 
-local GENERATE_SHADERS = {
+-- switch to false to disable shader compilation on every build
+local GENERATE_SHADERS = true
+
+local SHADER_TARGETS = {
     "glsl",
     "spirv",
     "essl",
@@ -22,15 +25,12 @@ target("game")
     set_kind("binary")
     set_default(true)
     add_deps("imgui", "bgfx", "glfw")
+    set_languages("c++17")
 
     set_warnings("all")
     add_rules("shader")
 
-    add_files(
-        "src/*.cpp",
-        "assets/shaders/*.v",
-        "assets/shaders/*.f"
-    )
+    add_files("src/*.cpp")
     add_includedirs(
         IMGUI,
         BGFX .. "include",
@@ -38,6 +38,13 @@ target("game")
         GLFW .. "include",
         GLM
     )
+
+    if GENERATE_SHADERS then
+        add_files(
+            "assets/shaders/*.v",
+            "assets/shaders/*.f"
+        )
+    end
 
     if is_os("windows") then
         add_includedirs(BX .. "include/compat/msvc")
@@ -60,7 +67,7 @@ target("game")
     end
 
     before_build(function (target)
-        for _, type in ipairs(GENERATE_SHADERS) do
+        for _, type in ipairs(SHADER_TARGETS) do
             local dir = vformat("$(projectdir)/assets/shaders/%s", type)
             if not os.exists(dir) then
                 os.mkdir(dir)
@@ -69,7 +76,7 @@ target("game")
     end)
 
     on_clean(function (target)
-        for _, type in ipairs(GENERATE_SHADERS) do
+        for _, type in ipairs(SHADER_TARGETS) do
             local dir = vformat("$(projectdir)/assets/shaders/%s", type)
             if os.exists(dir) then
                 os.rmdir(dir)
@@ -184,7 +191,7 @@ rule("shader")
             is_vertex = false
         end
 
-        for _, type in ipairs(GENERATE_SHADERS) do
+        for _, type in ipairs(SHADER_TARGETS) do
             local output = path.join(shaders, type, filename) .. ".bin"
             print("%-10s compiling shader %s", "[" .. type .. "]", filename)
 

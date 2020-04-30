@@ -1,99 +1,213 @@
-/*
- * Copyright 2011-2019 Branimir Karadzic. All rights reserved.
- * License: https://github.com/bkaradzic/bgfx#license-bsd-2-clause
- */
 #include <GLFW/glfw3.h>
 #include <bgfx/bgfx.h>
 #include <bgfx/platform.h>
-#include <bx/bx.h>
 #include <stdio.h>
-#if BX_PLATFORM_LINUX
+
+#include <string>
+
+#if BX_PLATFORM_LINUX || BX_PLATFORM_BSD
 #define GLFW_EXPOSE_NATIVE_X11
-#elif BX_PLATFORM_WINDOWS
-#define GLFW_EXPOSE_NATIVE_WIN32
+#define GLFW_EXPOSE_NATIVE_GLX
 #elif BX_PLATFORM_OSX
 #define GLFW_EXPOSE_NATIVE_COCOA
+#define GLFW_EXPOSE_NATIVE_NSGL
+#elif BX_PLATFORM_WINDOWS
+#define GLFW_EXPOSE_NATIVE_WIN32
+#define GLFW_EXPOSE_NATIVE_WGL
 #endif
+
 #include <GLFW/glfw3native.h>
 
-#include "logo.h"
+#include "imgui.h"
 
-static bool s_showStats = false;
+void reset();
 
-static void glfw_errorCallback(int error, const char *description) { fprintf(stderr, "GLFW error %d: %s\n", error, description); }
+void glfw_error_callback(int error, const char *description);
+void glfw_window_size_callback(GLFWwindow *window, int width, int height);
+void glfw_key_callback(GLFWwindow *window, int key, int scancode, int action, int mods);
+void glfw_char_callback(GLFWwindow *window, unsigned int codepoint);
+void glfw_mouse_button_callback(GLFWwindow *window, int button, int action, int mods);
+void glfw_scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
 
-static void glfw_keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods) {
-    if (key == GLFW_KEY_F1 && action == GLFW_RELEASE) s_showStats = !s_showStats;
-}
+bgfx::ProgramHandle create_program(const char *name);
 
-#if WINMAIN_AS_ENTRY
-#define MAIN() int WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
-#else
-#define MAIN() int main(int, char **)
-#endif
+static bool g_show_stats = false;
+static int g_width = 1024;
+static int g_height = 768;
 
-MAIN() {
-    // Create a GLFW window without an OpenGL context.
-    glfwSetErrorCallback(glfw_errorCallback);
-    if (!glfwInit()) return 1;
+int main(int argc, char **argv) {
+    // Create window using glfw
+    glfwSetErrorCallback(glfw_error_callback);
+    if (!glfwInit()) return -1;
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    GLFWwindow *window = glfwCreateWindow(1024, 768, "helloworld", nullptr, nullptr);
-    if (!window) return 1;
-    glfwSetKeyCallback(window, glfw_keyCallback);
-    // Call bgfx::renderFrame before bgfx::init to signal to bgfx not to create a render thread.
-    // Most graphics APIs must be used on the same thread that created the window.
-    bgfx::renderFrame();
-    // Initialize bgfx using the native window handle and window resolution.
-    bgfx::Init init;
+
+    auto window = glfwCreateWindow(g_width, g_height, "bgfx + imgui", nullptr, nullptr);
+    if (!window) {
+        glfwTerminate();
+        return -1;
+    }
+
+    // Setting some window callbacks
+    glfwSetWindowSizeCallback(window, glfw_window_size_callback);
+    glfwSetKeyCallback(window, glfw_key_callback);
+    glfwSetCharCallback(window, glfw_char_callback);
+    glfwSetMouseButtonCallback(window, glfw_mouse_button_callback);
+    glfwSetScrollCallback(window, glfw_scroll_callback);
+
+    // Tell bgfx about our window
+    bgfx::PlatformData platform_data = {};
 #if BX_PLATFORM_LINUX || BX_PLATFORM_BSD
-    init.platformData.ndt = glfwGetX11Display();
-    init.platformData.nwh = (void *)(uintptr_t)glfwGetX11Window(window);
+    platform_data.nwh = (void *)(uintptr_t)glfwGetX11Window(window);
+    platform_data.ndt = glfwGetX11Display();
 #elif BX_PLATFORM_OSX
-    init.platformData.nwh = glfwGetCocoaWindow(window);
+    platform_data.nwh = glfwGetCocoaWindow(window);
 #elif BX_PLATFORM_WINDOWS
-    init.platformData.nwh = glfwGetWin32Window(window);
-#endif
-    int width, height;
-    glfwGetWindowSize(window, &width, &height);
-    init.resolution.width = (uint32_t)width;
-    init.resolution.height = (uint32_t)height;
-    init.resolution.reset = BGFX_RESET_VSYNC;
-    if (!bgfx::init(init)) return 1;
-    // Set view 0 to the same dimensions as the window and to clear the color buffer.
-    const bgfx::ViewId kClearView = 0;
-    bgfx::setViewClear(kClearView, BGFX_CLEAR_COLOR);
-    bgfx::setViewRect(kClearView, 0, 0, bgfx::BackbufferRatio::Equal);
+    platform_data.nwh = glfwGetWin32Window(window);
+#endif  // BX_PLATFORM_
+    bgfx::setPlatformData(platform_data);
+
+    // Init bgfx
+    bgfx::Init init;
+    // init.type = bgfx::RendererType::Vulkan;  // Select rendering backend
+    init.vendorId = BGFX_PCI_ID_NONE;  // Choose graphics card vendor
+    init.deviceId = 0;                 // Choose which graphics card to use
+    init.callback = nullptr;
+    if (!bgfx::init(init)) {
+        fprintf(stderr, "unable to initialize bgfx\n");
+        return -1;
+    }
+
+    // Initialize ImGui
+    auto imgui_program = create_program("imgui");
+    imgui_init(window, imgui_program);
+
+    // Reset display buffers
+    reset();
+
+    float last_time = 0;
+    float time;
+    float dt;
     while (!glfwWindowShouldClose(window)) {
+        // Calculate delta time
+        time = (float)glfwGetTime();
+        dt = time - last_time;
+        last_time = time;
+
+        // Poll events
         glfwPollEvents();
-        // Handle window resize.
-        int oldWidth = width, oldHeight = height;
-        glfwGetWindowSize(window, &width, &height);
-        if (width != oldWidth || height != oldHeight) {
-            bgfx::reset((uint32_t)width, (uint32_t)height, BGFX_RESET_VSYNC);
-            bgfx::setViewRect(kClearView, 0, 0, bgfx::BackbufferRatio::Equal);
-        }
-        // This dummy draw call is here to make sure that view 0 is cleared if no other draw calls are submitted to view 0.
-        bgfx::touch(kClearView);
-        // Use debug font to print information about this example.
+        imgui_events(dt);
+
+        // Render
+        ImGui::NewFrame();
+
+        bgfx::touch(0);
+
+        ImGui::Begin("Information", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+        ImGui::Text("Current window resolution is %dx%d", g_width, g_height);
+        ImGui::End();
+
+        ImGui::ShowDemoWindow();
+
         bgfx::dbgTextClear();
-        bgfx::dbgTextImage(bx::max<uint16_t>(uint16_t(width / 2 / 8), 20) - 20, bx::max<uint16_t>(uint16_t(height / 2 / 16), 6) - 6, 40, 12,
-                           s_logo, 160);
-        bgfx::dbgTextPrintf(0, 0, 0x0f, "Press F1 to toggle stats.");
-        bgfx::dbgTextPrintf(0, 1, 0x0f,
-                            "Color can be changed with ANSI \x1b[9;me\x1b[10;ms\x1b[11;mc\x1b[12;ma\x1b[13;mp\x1b[14;me\x1b[0m code too.");
-        bgfx::dbgTextPrintf(
-            80, 1, 0x0f, "\x1b[;0m    \x1b[;1m    \x1b[; 2m    \x1b[; 3m    \x1b[; 4m    \x1b[; 5m    \x1b[; 6m    \x1b[; 7m    \x1b[0m");
-        bgfx::dbgTextPrintf(
-            80, 2, 0x0f, "\x1b[;8m    \x1b[;9m    \x1b[;10m    \x1b[;11m    \x1b[;12m    \x1b[;13m    \x1b[;14m    \x1b[;15m    \x1b[0m");
-        const bgfx::Stats *stats = bgfx::getStats();
-        bgfx::dbgTextPrintf(0, 2, 0x0f, "Backbuffer %dW x %dH in pixels, debug text %dW x %dH in characters.", stats->width, stats->height,
-                            stats->textWidth, stats->textHeight);
-        // Enable stats or debug text.
-        bgfx::setDebug(s_showStats ? BGFX_DEBUG_STATS : BGFX_DEBUG_TEXT);
-        // Advance to next frame. Process submitted rendering primitives.
+        bgfx::dbgTextPrintf(0, 0, 0x0f, "Press \x1b[11;mF1\x1b[0m to toggle stats.");
+        bgfx::setDebug(g_show_stats ? BGFX_DEBUG_STATS : BGFX_DEBUG_TEXT);
+
+        imgui_render();
         bgfx::frame();
     }
+
+    // Destroy all resources
+    imgui_shutdown();
     bgfx::shutdown();
     glfwTerminate();
     return 0;
+}
+
+static void reset() {
+    bgfx::reset(g_width, g_height);
+    imgui_reset(g_width, g_height);
+    bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x1a1a1fff);
+    bgfx::setViewRect(0, 0, 0, bgfx::BackbufferRatio::Equal);
+}
+
+static void glfw_error_callback(int error, const char *description) {
+    fprintf(stderr, "GLFW error %d: %s\n", error, description);
+}
+
+static void glfw_window_size_callback(GLFWwindow *window, int width, int height) {
+    g_width = width;
+    g_height = height;
+    reset();
+}
+
+static void glfw_key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
+    imgui_key_callback(window, key, scancode, action, mods);
+
+    if (!imgui_want_keyboard()) {  // Ignore when ImGui has keyboard focus
+        if (key == GLFW_KEY_F1 && action == GLFW_PRESS) g_show_stats = !g_show_stats;
+    }
+}
+
+static void glfw_char_callback(GLFWwindow *window, unsigned int codepoint) {
+    imgui_char_callback(window, codepoint);
+}
+
+static void glfw_mouse_button_callback(GLFWwindow *window, int button, int action, int mods) {
+    imgui_mouse_button_callback(window, button, action, mods);
+}
+
+static void glfw_scroll_callback(GLFWwindow *window, double xoffset, double yoffset) {
+    imgui_scroll_callback(window, xoffset, yoffset);
+}
+
+static const bgfx::Memory *load_file(const char *filename) {
+    auto file = fopen(filename, "rb");
+    if (!file) {
+        fprintf(stderr, "unable to open file: %s\n", filename);
+        return nullptr;
+    }
+    fseek(file, 0, SEEK_END);
+    size_t file_size = ftell(file);
+    rewind(file);
+    const bgfx::Memory *mem = bgfx::alloc((uint32_t)file_size + 1);
+    size_t read_size = fread(mem->data, 1, file_size, file);
+    if (read_size != file_size) {
+        fprintf(stderr, "read %llu bytes instead of %llu\n", read_size, file_size);
+        return nullptr;
+    }
+    mem->data[mem->size - 1] = 0;
+    return mem;
+}
+
+static const char *get_shader_type() {
+    switch (bgfx::getRendererType()) {
+        case bgfx::RendererType::Noop:
+        case bgfx::RendererType::Direct3D9:
+            return "dx9";
+        case bgfx::RendererType::Direct3D11:
+        case bgfx::RendererType::Direct3D12:
+            return "dx11";
+        case bgfx::RendererType::OpenGL:
+            return "glsl";
+        case bgfx::RendererType::OpenGLES:
+            return "essl";
+        case bgfx::RendererType::Metal:
+            return "metal";
+        case bgfx::RendererType::Vulkan:
+            return "spirv";
+        default:
+            return "unknown";
+    }
+}
+
+static bgfx::ProgramHandle create_program(const char *name) {
+    char vs_path[MAX_PATH];
+    char fs_path[MAX_PATH];
+
+    snprintf(vs_path, sizeof(vs_path), "assets/shaders/%s/%s.v.bin", get_shader_type(), name);
+    snprintf(fs_path, sizeof(fs_path), "assets/shaders/%s/%s.f.bin", get_shader_type(), name);
+
+    auto vs = bgfx::createShader(load_file(vs_path));
+    auto fs = bgfx::createShader(load_file(fs_path));
+    return bgfx::createProgram(vs, fs, true);
 }
