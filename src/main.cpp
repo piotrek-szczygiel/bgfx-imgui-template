@@ -20,6 +20,12 @@
 
 #include "imgui.h"
 
+#if WINMAIN_AS_ENTRY
+#define MAIN() int WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
+#else
+#define MAIN() int main(int, char **)
+#endif
+
 void reset();
 
 void glfw_error_callback(int error, const char *description);
@@ -35,7 +41,7 @@ static bool g_show_stats = false;
 static int g_width = 1024;
 static int g_height = 768;
 
-int main(int argc, char **argv) {
+MAIN() {
     // Create window using glfw
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit()) return -1;
