@@ -84,10 +84,6 @@ target("game")
         end
     end)
 
-    before_run(function (target)
-        os.cd("$(projectdir)")
-    end)
-
 
 target("imgui")
     set_kind("static")
