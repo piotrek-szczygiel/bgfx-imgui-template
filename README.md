@@ -17,9 +17,9 @@ git submodule update --init --recursive
 ## Requirements
 
 - C++ compiler
-- [xmake](https://xmake.io/)
+- xmake
 
-You can install xmake on your machine using these one-liners:
+You can install [xmake](https://xmake.io/) on your machine using these one-liners:
 
 ```bash
 # Unix systems
@@ -29,9 +29,14 @@ bash <(curl -fsSL https://xmake.io/shget.text)
 Invoke-Expression (Invoke-Webrequest 'https://xmake.io/psget.text' -UseBasicParsing).Content
 ```
 
+If you are on Linux you may also need OpenGL and X11 development libraries.
+
 ## Usage
 
 ```bash
+# Optionally: use debug mode
+xmake config -m debug
+
 # Build game
 xmake
 
@@ -44,8 +49,8 @@ xmake run
 
 ## Compiling shaders
 
-Shaderc is present as an .exe file in bin directory.  
-If you wish to compile shaders on unix platforms you have to compile it first.
+Shaderc is present as an .exe file in the bin directory.  
+If you wish to compile shaders on unix platforms you have to build the compiler first.
 
 ```bash
 # Build shaderc

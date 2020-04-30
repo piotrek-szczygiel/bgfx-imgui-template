@@ -35,7 +35,7 @@ target("game")
 
     if is_os("windows") then
         add_includedirs(BX .. "include/compat/msvc")
-        add_links("gdi32", "shell32", "user32")
+        add_syslinks("gdi32", "shell32", "user32")
         add_defines(
             "GLFW_EXPOSE_NATIVE_WIN32",
             "GLFW_EXPOSE_NATIVE_WGL",
@@ -43,9 +43,10 @@ target("game")
         )
         if is_mode("release") then
             add_defines("WINMAIN_AS_ENTRY")
+            add_ldflags("/subsystem:windows")
         end
     elseif is_os("linux") then
-        add_links("dl", "GL", "pthread", "X11")
+        add_syslinks("dl", "GL", "pthread", "X11")
         add_defines(
             "GLFW_EXPOSE_NATIVE_X11",
             "GLFW_EXPOSE_NATIVE_GLX"

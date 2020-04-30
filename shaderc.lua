@@ -41,10 +41,10 @@ target("shaderc")
     )
 
     if is_os("windows") then
-        add_links("user32", "gdi32")
+        add_syslinks("user32", "gdi32")
         add_includedirs(BX .. "include/compat/msvc")
     elseif is_os("linux") then
-        add_links("dl", "pthread")
+        add_syslinks("dl", "pthread")
     elseif is_os("macosx") then
         add_includedirs(BX .. "include/compat/osx")
     end
