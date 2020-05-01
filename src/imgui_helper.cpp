@@ -255,11 +255,11 @@ void imgui_scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
 }
 
 bool imgui_want_keyboard() {
-    ImGuiIO& io = ImGui::GetIO();
+    const ImGuiIO& io = ImGui::GetIO();
     return io.WantCaptureKeyboard;
 }
 
 bool imgui_want_mouse() {
-    ImGuiIO& io = ImGui::GetIO();
+    const ImGuiIO& io = ImGui::GetIO();
     return io.WantCaptureMouse;
 }

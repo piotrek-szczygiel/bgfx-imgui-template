@@ -80,12 +80,10 @@ MAIN() {
     reset();
 
     float last_time = 0;
-    float time;
-    float dt;
     while (!glfwWindowShouldClose(window)) {
         // Calculate delta time
-        time = (float)glfwGetTime();
-        dt = time - last_time;
+        float time = (float)glfwGetTime();
+        float dt = time - last_time;
         last_time = time;
 
         // Poll events
@@ -167,10 +165,12 @@ static const bgfx::Memory *load_file(const char *filename) {
     const bgfx::Memory *mem = bgfx::alloc((uint32_t)file_size + 1);
     size_t read_size = fread(mem->data, 1, file_size, file);
     if (read_size != file_size) {
-        fprintf(stderr, "read %llu bytes instead of %llu\n", read_size, file_size);
+        fprintf(stderr, "read %zu bytes instead of %zu\n", read_size, file_size);
+        fclose(file);
         return nullptr;
     }
     mem->data[mem->size - 1] = 0;
+    fclose(file);
     return mem;
 }
 
