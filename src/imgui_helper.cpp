@@ -79,10 +79,6 @@ void imgui_init(GLFWwindow* window, bgfx::ProgramHandle program) {
     io.GetClipboardTextFn = imgui_get_clipboard;
     io.ClipboardUserData = g_imgui_window;
 
-#if BX_PLATFORM_WINDOWS
-    io.ImeWindowHandle = (void*)glfwGetWin32Window(g_imgui_window);
-#endif
-
     g_imgui_cursors[ImGuiMouseCursor_Arrow] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
     g_imgui_cursors[ImGuiMouseCursor_TextInput] = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
     g_imgui_cursors[ImGuiMouseCursor_ResizeAll] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
