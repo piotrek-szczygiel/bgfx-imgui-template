@@ -33,6 +33,10 @@ target("game")
         GLM
     )
 
+    if is_mode("debug") then
+        set_symbols("debug")
+    end
+
     if is_os("windows") then
         add_includedirs(BX .. "include/compat/msvc")
         add_syslinks("gdi32", "shell32", "user32")

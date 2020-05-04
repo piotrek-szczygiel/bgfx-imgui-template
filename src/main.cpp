@@ -99,8 +99,6 @@ MAIN() {
         ImGui::Text("Current window resolution is %dx%d", g_width, g_height);
         ImGui::End();
 
-        ImGui::ShowDemoWindow();
-
         bgfx::dbgTextClear();
         bgfx::dbgTextPrintf(0, 0, 0x0f, "Press \x1b[11;mF1\x1b[0m to toggle stats.");
         bgfx::setDebug(g_show_stats ? BGFX_DEBUG_STATS : BGFX_DEBUG_TEXT);
@@ -137,7 +135,13 @@ static void glfw_key_callback(GLFWwindow *window, int key, int scancode, int act
     imgui_key_callback(window, key, scancode, action, mods);
 
     if (!imgui_want_keyboard()) {  // Ignore when ImGui has keyboard focus
-        if (key == GLFW_KEY_F1 && action == GLFW_PRESS) g_show_stats = !g_show_stats;
+        if (action == GLFW_PRESS) {
+            if (key == GLFW_KEY_ESCAPE) {
+                glfwSetWindowShouldClose(window, 1);
+            } else if (key == GLFW_KEY_F1) {
+                g_show_stats = !g_show_stats;
+            }
+        }
     }
 }
 
